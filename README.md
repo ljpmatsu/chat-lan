@@ -38,6 +38,7 @@ Prosty, lokalny czat w czasie rzeczywistym – bez zewnętrznych serwerów, dzia
 Instalujemy tylko raz:
 ```bash
 npm install express ws
+```
 
 ---
 
@@ -85,8 +86,10 @@ Simple, real-time chat for local networks – no external servers required.
 One-time install:
 ```bash
 npm install express ws
+```
 
 ---
 
 📜 Licence
+
 MIT – do whatever you want :)
