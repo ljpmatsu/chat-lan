@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Czat LAN</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{
+  --bg:#f5f7fa;
+  --card:#ffffff;
+  --radius:24px;
+  --shadow:0 10px 35px rgba(0,0,0,.07);
+  --text:#444;
+  --myColor:#c7f0db; /* domyślny – nadpisany JS-em */
+  --iconBlue:#5b9bd5; /* stały niebieski ikonek */
+}
+*{box-sizing:border-box; font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;}
+body{margin:0; height:100vh; display:flex; align-items:center; justify-content:center; background:var(--bg);}
+.chat-card{
+  width:70vw; max-width:900px; height:78vh; max-height:800px;
+  background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+header{background:#c7f0db; color:var(--text); padding:16px 28px; font-size:1.25rem; letter-spacing:.5px;}
+#log{flex:1; padding:18px 28px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;}
+.bubble{padding:12px 20px; border-radius:var(--radius); max-width:65%; word-break:break-word; animation:fade .35s ease;}
+.bubble.own{ align-self:flex-end; background:var(--myColor); color:#2a2a2a;}
+@keyframes fade{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;}}
+#panel{display:flex; align-items:center; gap:12px; padding:18px 28px; border-top:1px solid #eee;}
+#msg{flex:1; padding:14px 22px; border:1px solid #ddd; border-radius:var(--radius); font-size:1rem; outline:none; transition:border .2s;}
+#msg:focus{border-color:#a0d9c9;}
+#sendBtn{padding:14px 26px; border:none; border-radius:var(--radius); background:var(--myColor); color:#fff; font-size:1rem; cursor:pointer; transition:background .2s;}
+#sendBtn:hover{filter:brightness(1.05);}
+.iconBtn{                         /* wspólny styl ikonek */
+  padding:14px; border:none; border-radius:var(--radius);
+  background:var(--iconBlue); color:#fff; font-size:1.4rem;
+  cursor:pointer; transition:background .2s;
+}
+.iconBtn:hover{background:#4a8ac4;}
+#colorPicker{position:absolute; opacity:0; pointer-events:none;}
+</style>
+</head>
+<body>
+<div class="chat-card">
+  <header>Czat LAN</header>
+  <div id="log"></div>
+  <div id="panel">
+    <input id="msg" placeholder="Napisz coś…">
+    <button id="sendBtn" onclick="send()">Wyślij</button>
+    <button id="colorBtn" class="iconBtn" title="wybierz kolor swojego dymka">🎨</button>
+    <button id="soundBtn" class="iconBtn" title="włącz/wyłącz dźwięk">🔊</button>
+    <input type="color" id="colorPicker">
+  </div>
+</div>
+
+<script>
+/* ---------- favicon ---------- */
+const canvas=document.createElement('canvas'); canvas.width=canvas.height=32;
+const ctx=canvas.getContext('2d');
+function drawNormal(){
+  ctx.clearRect(0,0,32,32); ctx.fillStyle='#a0d9c9';
+  ctx.beginPath(); ctx.arc(16,16,14,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.font='bold 18px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('💬',16,16);
+  const lnk=document.querySelector('link[rel*="icon"]')||document.createElement('link');
+  lnk.rel='icon'; lnk.type='image/png'; lnk.href=canvas.toDataURL('image/png');
+  document.head.appendChild(lnk);
+}
+function drawAlert(){
+  drawNormal(); ctx.fillStyle='#f06492';
+  ctx.beginPath(); ctx.arc(24,8,7,0,Math.PI*2); ctx.fill();
+  document.querySelector('link[rel*="icon"]').href=canvas.toDataURL('image/png');
+}
+drawNormal();
+
+/* ---------- dźwięk + polityka „user-gesture” ---------- */
+const audio=new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmFgU7k9n1unEiBC13yO/eizEIHWq+8+OWT');
+audio.volume=.4;
+let userInteracted=false;
+function tryPlay(){if(userInteracted)audio.play().catch(()=>{});}
+['click','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>{if(!userInteracted)userInteracted=true;},{once:true}));
+
+/* ---------- wyciszenie ---------- */
+let soundOn=localStorage.getItem('chat-sound')!=='off';
+function updateBtn(){document.getElementById('soundBtn').textContent=soundOn?'🔊':'🔇';}
+function toggleSound(){soundOn=!soundOn; localStorage.setItem('chat-sound',soundOn?'on':'off'); updateBtn();}
+document.getElementById('soundBtn').addEventListener('click',toggleSound); updateBtn();
+
+/* ---------- kolor dymka + przycisku ---------- */
+const nick=prompt('Twój nick:')||'anon';
+let myColor=localStorage.getItem('chat-mycolor-'+nick)||'#c7f0db';
+function applyMyColor(){
+  document.documentElement.style.setProperty('--myColor',myColor);
+  document.getElementById('sendBtn').style.background=myColor;
+}
+applyMyColor();
+
+const colorPicker=document.getElementById('colorPicker');
+colorPicker.value=myColor;
+document.getElementById('colorBtn').addEventListener('click',()=>colorPicker.click());
+colorPicker.addEventListener('input',e=>{
+  myColor=e.target.value;
+  localStorage.setItem('chat-mycolor-'+nick,myColor);
+  applyMyColor();
+});
+
+/* ---------- WebSocket ---------- */
+const ws=new WebSocket(`ws://${location.host}`);
+const log=document.getElementById('log');
+const input=document.getElementById('msg');
+
+ws.onmessage=e=>{
+  const pack=JSON.parse(e.data);
+  if(pack.type==='history') pack.data.forEach(m=>addLine(m,false));
+  else addLine(pack,true);
+};
+function addLine(m,incoming=false){
+  const d=new Date(m.time);
+  const div=document.createElement('div');
+  div.className='bubble';
+  if(m.nick===nick){
+    div.classList.add('own');
+    div.style.background='var(--myColor)';
+    div.style.color='#2a2a2a';
+  }else{
+    const friendColor=localStorage.getItem('chat-mycolor-'+m.nick)||pastelFromNick(m.nick);
+    div.style.background=friendColor;
+    div.style.color='#2a2a2a';
+  }
+  div.textContent=`[${d.toLocaleTimeString()}] ${m.nick}: ${m.text}`;
+  log.appendChild(div); log.scrollTop=log.scrollHeight;
+  if(incoming&&m.nick!==nick&&document.hidden){drawAlert(); tryPlay();}
+}
+function pastelFromNick(n){
+  let h=0; for(let i=0;i<n.length;i++) h=Math.imul(31,h)+n.charCodeAt(i)|0;
+  h=(h&0xFFFF)%360;
+  return `hsl(${h},60%,80%)`;
+}
+function send(){
+  const txt=input.value.trim();
+  if(!txt)return;
+  ws.send(JSON.stringify({nick,text:txt}));
+  input.value='';
+}
+input.addEventListener('keyup',e=>{if(e.key==='Enter')send();});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)drawNormal();});
+</script>
+</body>
+</html>
